@@ -1,4 +1,4 @@
-# training_test
+# training_test DEVELOPMENT BRANCH
 NCEAS Training Course
 
 This is a place to practice Git and R and Markdown.
