@@ -9,4 +9,5 @@ Here is a list:
 * R
 * Markdown
 * Github
-* Gmail
+* Outlook
+
