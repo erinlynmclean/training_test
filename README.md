@@ -5,7 +5,7 @@ This is a place to practice Git and R and Markdown.
 
 Here is a list of computer things:
 
-* Git
+* Go on, git
 * R
 * Markdown
 * Github
