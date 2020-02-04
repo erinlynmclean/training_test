@@ -8,3 +8,5 @@ Here is a list:
 * Git
 * R
 * Markdown
+* Github
+* Gmail
