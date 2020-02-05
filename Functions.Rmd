@@ -1,0 +1,73 @@
+---
+title: "Functions"
+author: "Erin McLean"
+date: "2/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(roxygen2)
+```
+#Setting up some dummy data
+
+```{r}
+airtemps<- c(212, 30.3, 78, 32, 0) 
+celsius1<-(airtemps[1]-32)*(5/9)
+celsius1
+celsius2<-(airtemps[2]-32)*(5/9)
+celsius2
+celsius3<-(airtemps[3]-32)*(5/9)
+celsius4<-(airtemps[4]-32)*(5/9)
+celsius5<-(airtemps[5]-32)*(5/9)
+```
+
+#Defining temperature conversion function
+
+"#' " is meant to be the start of documentation for a function that's meant to be saved. Start with what the function does, starting with a verb. Should be short, because it'll be the title.
+
+Then add a line and add more documentation.
+
+Telling it the names of the parameters that it needs for input. First, F to C:
+
+```{r}
+
+#' convert degrees F to C
+#' 
+#' we use the simple formala for temp conversion to convert.
+#' one can find this in any intro to physics book or on google.
+#' @param fahr the temperature to be converted in degrees F
+#' @return the temperature converted to C
+#' @examples 
+#' fahr_to_cel(32)
+#' fahr_to_cel(c(212,100,32))
+
+fahr_to_cel<-function(fahr) {
+  #stopifnot(is.numeric(fahr))
+  assert_that(is.numeric(fahr))
+  cel<-(fahr-32)*(5/9)
+  return(cel)
+}
+```
+
+If you don't think you're going to use the functionality again, put your code in a loop to avoid repeating yourself.
+
+```{r}
+cel4<-fahr_to_cel(airtemps[4])
+cel4
+
+celsius<-fahr_to_cel(airtemps)
+celsius
+```
+
+```{r}
+cel_to_fahr<-function(cel) {
+  fahr<-(cel*(9/5))+32
+  return(fahr)
+}
+
+fahrenheit<-cel_to_fahr(celsius)
+fahrenheit
+```
+
