@@ -1,7 +1,7 @@
 ---
 title: "Data Cleaning"
 author: "Erin McLean"
-date: "2/4/2020"
+date: "2/5/2020"
 output: html_document
 ---
 
@@ -9,10 +9,157 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# **Data Cleaning Plan**
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(tidyr)
+```
 
 ## Read in the data
 
+If you need to call a package function specifically:
+stats::filter()
+package_name::function()
+
+The warning=FALSE avoids the Rmarkdown printing the warning, which looks bad.
+
+Good to read in as a URL so you're always grabbing the same file, and your collaborators will be able to do the same thing without worrying about the filepath. Plus, it doesn't clog up your hard drive. 
+
+```{r}
+catch_original<-read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1", stringsAsFactors = FALSE)
+head(catch_original)
+```
+
 ## Make data tidy
 
+Remove the notes and all columns because we don't need them. Good to keep an original copy of your data so always read the new one in as a "clean" file.
+
+"I" in the Chinook column should be a 1.
+
+select(Region, Year, Chinook, Sockeye, Coho, Pink, Chum) this works, but lots of typing
+
+```{r}
+catch_clean <- catch_original %>% 
+  select(-All,-notesRegCode) %>% 
+  mutate(Chinook=ifelse(Chinook=="I",1,Chinook)) %>% 
+  mutate(Chinook=as.integer(Chinook))
+
+head(catch_clean)
+```
+
+### Data QA
+
+Determine which values were converted to NA by as.numeric(). Tells you what row number your problem place is.
+
+Check to make sure your data is clean - should there be missing values? What type should each column be?
+
+Checking for NA values. Most important for working with other people's data - your own you can know better, but other people's is going to be a lot different. Land mines exist everywhere. Hard to use other people's data unless you fully check it out.
+
+```{r}
+i<-which(is.na(catch_clean$Chinook))
+catch_original[i,]
+```
+
+### Move into long/wide format
+
+Data is in wide format but we want it to be in long form.
+pivot_longer(cols=c(Chinook, Sockeye, Coho, Pink, Chum))
+
+Rename allows you to remname independent of position
+
+```{r}
+catch_long<-catch_clean %>% 
+  pivot_longer(cols=-c(Region, Year),
+               names_to = "Species",
+               values_to = "Catch") %>% 
+  rename(catch_thousands=Catch) %>% 
+  mutate(Catch=catch_thousands * 1000) %>% 
+  select(-catch_thousands)
+head(catch_long)
+```
+
+```{r}
+catch_wide<-catch_long %>% 
+  pivot_wider(names_from = "Year",
+              values_from = "Catch")
+head(catch_wide)
+```
+
+## Summarize
+
+```{r}
+mean_region<-catch_long %>% 
+  group_by(Region,Species) %>% 
+  summarise(mean_catch=mean(Catch),
+            n_obs=n())
+head(mean_region)
+```
+
+Filter for only sockeye species, then figure out what year was the highest catch total
+
+With arrange, without the minus sign would be ascending
+
+```{r}
+sockeye_catch<-catch_long %>% 
+  filter(Species=="Sockeye") %>% 
+  group_by(Year) %>% 
+  summarise(mean_catch=mean(Catch)) %>% 
+  arrange(-mean_catch) 
+head(sockeye_catch)
+```
+
 ## Join to other data
+
+Don't have more rows than you started with - that's a sign that something went awry.
+
+Read in the management definitions table and only grab the columns you want.
+
+```{r}
+region_defs <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1",
+                        stringsAsFactors = FALSE) %>% 
+  select(code,mgmtArea)
+head(region_defs)
+```
+
+```{r}
+catch_joined<-left_join(catch_long,region_defs,
+                        by=c("Region"="code"))
+head(catch_joined)
+```
+
+## Using separate and unite - how to split one column into two columns
+```{r}
+sites_df <- data.frame(site = c("HAW-101",
+                                "HAW-103",
+                                "OAH-320",
+                                "OAH-219",
+                                "MAI-039"),
+                       stringsAsFactors = FALSE)
+sites_df %>% 
+  separate(site,
+           into=c("island","site_number"),
+           sep="-",
+           remove=F)
+
+```
+
+```{r}
+dates_df <- data.frame(year = c("1930",
+                                "1930",
+                                "1930"),
+                       month = c("12",
+                                "12",
+                                "12"),
+                       day = c("14",
+                               "15",
+                               "16"),
+                       stringsAsFactors = FALSE)
+
+dates_df %>% 
+  unite(date,
+        year, month, day,
+        sep="-",
+        remove=F)
+```
+
+
+
