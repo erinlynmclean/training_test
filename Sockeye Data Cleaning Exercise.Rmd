@@ -1,0 +1,110 @@
+---
+title: "Data Cleaning Exercise"
+author: "Erin McLean"
+date: "2/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Loading in Packages
+
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(tidyr)
+```
+
+#Loading in Data
+
+```{r}
+daily_orig<-read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e", stringsAsFactors = FALSE)
+head(daily_orig)
+```
+
+#Filtering to just Sockeye & Bristol Bay
+
+```{r}
+BBsockeye_catch<-daily_orig %>% 
+  filter(Species=="Sockeye",SASAP.Region=="Bristol Bay") %>% 
+  select(-Method,-Latitude,-Longitude,-Source)
+head(BBsockeye_catch)
+```
+
+#Separating the Date column into 3, grouping by year and location, getting the sum at each location and each year 
+
+```{r}
+byyear_BBsockeye <-  
+  separate(BBsockeye_catch,sampleDate,
+           into=c("Year","Month","Day"),
+           sep="-",
+           remove=T) %>% 
+  group_by(Year,Location) %>% 
+  summarise(Escapement=sum(DailyCount)) 
+print(byyear_BBsockeye)
+```
+
+#Loading in 2nd set of Data
+
+```{r}
+goals_orig<-read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/knb.92014.1", stringsAsFactors = FALSE)
+head(goals_orig)
+```
+
+#Filtering to just Sockeye & Bristol Bay, changing lower limit to integer
+
+```{r}
+BBsockeye_goal<-goals_orig %>% 
+  filter(Species=="Sockeye",Region=="Bristol Bay") %>% 
+  select(System, Lower,Upper,Initial.Year) %>% 
+  mutate(Lower=as.integer(Lower))
+
+head(BBsockeye_goal)
+```
+
+#Data QA
+
+```{r}
+i<-which(is.na(BBsockeye_goal$Lower))
+BBsockeye_goal[i,]
+```
+
+#Joining the tables
+
+```{r}
+goals_joined<-left_join(byyear_BBsockeye,BBsockeye_goal,
+                        by=c("Location"="System")) %>%
+  filter(Year>=Initial.Year) %>% 
+  filter(Escapement>=Lower)
+print(goals_joined)
+```
+
+#Are these data meeting the lower goals?
+
+```{r}
+goals_lower<-filter(goals_joined, Escapement>=Lower) %>% 
+  select(-Lower,-Initial.Year) 
+
+print(goals_lower)
+```
+
+
+#Are these data meeting the upper goals?
+
+```{r}
+goals_upper<-filter(goals_joined, Escapement<=Upper) %>% 
+  select(-Lower,-Initial.Year) 
+
+print(goals_upper)
+```
+
+
+#Are these data meeting both goals?
+
+```{r}
+goals<-filter(goals_joined, Lower<=Escapement & Escapement>=Upper) %>% 
+  select(-Initial.Year) 
+
+print(goals)
+```
