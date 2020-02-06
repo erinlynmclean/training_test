@@ -369,7 +369,7 @@ summary {
 </div>
 
 
-<p>#Building a function</p>
+<p>#Setting up some dummy data</p>
 <pre class="r"><code>airtemps&lt;- c(212, 30.3, 78, 32, 0) 
 celsius1&lt;-(airtemps[1]-32)*(5/9)
 celsius1</code></pre>
@@ -381,14 +381,38 @@ celsius2</code></pre>
 celsius4&lt;-(airtemps[4]-32)*(5/9)
 celsius5&lt;-(airtemps[5]-32)*(5/9)</code></pre>
 <p>#Defining temperature conversion function</p>
+<p>“#’” is meant to be the start of documentation for a function that’s meant to be saved. Start with what the function does, starting with a verb. Should be short, because it’ll be the title.</p>
+<p>Then add a line and add more documentation.</p>
 <p>Telling it the names of the parameters that it needs for input. First, F to C:</p>
-<pre class="r"><code>fahr_to_cel&lt;-function(fahr) {
+<pre class="r"><code>#' convert degrees F to C
+#' 
+#' we use the simple formala for temp conversion to convert.
+#' one can find this in any intro to physics book or on google.
+#' @param fahr the temperature to be converted in degrees F
+#' @return the temperature converted to C
+#' @examples 
+#' fahr_to_cel(32)
+#' fahr_to_cel(c(212,100,32))
+
+fahr_to_cel&lt;-function(fahr) {
+  #stopifnot(is.numeric(fahr))
   cel&lt;-(fahr-32)*(5/9)
   return(cel)
 }</code></pre>
+<p>If you don’t think you’re going to use the functionality again, put your code in a loop to avoid repeating yourself.</p>
 <pre class="r"><code>cel4&lt;-fahr_to_cel(airtemps[4])
 cel4</code></pre>
 <pre><code>## [1] 0</code></pre>
+<pre class="r"><code>celsius&lt;-fahr_to_cel(airtemps)
+celsius</code></pre>
+<pre><code>## [1] 100.0000000  -0.9444444  25.5555556   0.0000000 -17.7777778</code></pre>
+<pre class="r"><code>source('Functions.R')
+
+cel_to_fahr&lt;-function(cel) {
+  fahr&lt;-(cel*(9/5))+32
+  return(fahr)
+}</code></pre>
+<p>fahrenheit&lt;-cel_to_fahr(celsius) fahrenheit</p>
 
 
 

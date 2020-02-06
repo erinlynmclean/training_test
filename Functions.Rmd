@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(roxygen2)
+library(mytools)
 ```
 #Setting up some dummy data
 
@@ -45,7 +46,6 @@ Telling it the names of the parameters that it needs for input. First, F to C:
 
 fahr_to_cel<-function(fahr) {
   #stopifnot(is.numeric(fahr))
-  assert_that(is.numeric(fahr))
   cel<-(fahr-32)*(5/9)
   return(cel)
 }
@@ -60,14 +60,21 @@ cel4
 celsius<-fahr_to_cel(airtemps)
 celsius
 ```
+calling it that way only works because it's in the same directory. building a package makes it a lot easier to source things that doesn't depend on your particular computer setup of files and folders.
 
 ```{r}
+source('Functions.R')
+
 cel_to_fahr<-function(cel) {
   fahr<-(cel*(9/5))+32
   return(fahr)
 }
-
+```
 fahrenheit<-cel_to_fahr(celsius)
 fahrenheit
+
+
+```{r}
+environment_info("hey NCEAS")
 ```
 

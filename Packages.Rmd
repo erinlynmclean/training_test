@@ -1,0 +1,15 @@
+---
+title: "Packages"
+author: "Erin McLean"
+date: "2/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Better to define functions in packages rather than functions. Markdowns are meant to be human readable documents.
+
+
+
