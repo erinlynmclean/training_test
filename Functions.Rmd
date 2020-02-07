@@ -78,3 +78,6 @@ fahrenheit
 environment_info("hey NCEAS")
 ```
 
+debug(fahr_to_cel)
+install.packages("blogdown")
+
