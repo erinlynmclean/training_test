@@ -1,0 +1,189 @@
+---
+title: "Spatial_Data"
+author: "Erin McLean"
+date: "2/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(leaflet)
+library(ggmap)
+```
+
+Plot in base R helps you get a quick view of your data. Do you need to change your projection?
+st_crs tells you what coordinate reference system that you're in
+EPSG codes: 
+4326 (WGS84)
+3338 (Alaska Albers)
+3857 (Pseudo Mercator)
+```{r}
+ak_regions<-read_sf("shapefile_demo_data/ak_regions_simp.shp")
+class(ak_regions)
+plot(ak_regions)
+st_crs(ak_regions)
+```
+
+often you need to have different versions of your data in different projections
+
+sf works well with the tidyverse but your geometry column is sticky - it stays around because that's where your spatial data lives.
+```{r}
+ak_regions_3338<-ak_regions %>% 
+  st_transform(crs=3338)
+
+nrow(ak_regions_3338)
+summary(ak_regions_3338)
+
+plot(ak_regions_3338)
+```
+
+Reading in population data
+
+```{r}
+pop<-read.csv("shapefile_demo_data/alaska_population.csv",stringsAsFactors = F)
+head(pop)
+```
+Can do a spatial join but both must be of class sf.
+Remove determines whether to keep the lat and lang - in this case, you want to keep them.
+
+```{r}
+pop_4326<-st_as_sf(pop,
+                   coords=c('lng','lat'),
+                   crs=4326,
+                   remove=F)
+
+pop_3338<-pop_4326 %>% 
+  st_transform(crs=3338)
+```
+
+Do the spatial join of the two datasets
+St within asks the question which of the points belongs inside which of the polygons
+If we had lines or other polygons, we'd be looking at ST intersect - which line intersects which polygon.
+The default is the left join.
+
+```{r}
+pop_joined<-st_join(pop_3338,ak_regions_3338, join=st_within)
+plot(pop_joined)
+```
+
+Now we want to calculate the pop by region.
+
+Now this is a vector of cities in each region...as opposed to a polygon. Total pop info should be associated with the region rather than the points.
+
+```{r}
+pop_region<-pop_joined %>% 
+  as.data.frame() %>% 
+  group_by(region) %>% 
+  summarise(total_pop=sum(population))
+
+#now we can make the geometry column unsticky - we don't need the point data, we want it to be associated with a polygon. Drop the geometry first. That's what the as.data.frame does
+
+head(pop_region)
+```
+Create new sf that has pop and region info
+
+Can do regular left joins on spatial data as long as the spatial data is the first arg and the second join is the regular data frame
+```{r}
+pop_region_3338<-left_join(ak_regions_3338,pop_region)
+
+plot(pop_region_3338)
+```
+this unions the geography
+
+if you don't want to do that, add an arg to summarize function
+```{r}
+pop_mgmt_3338<-pop_region_3338 %>% 
+  group_by(mgmt_area) %>% 
+  summarise(total_pop=sum(total_pop),do_union=F)
+
+plot(pop_mgmt_3338["total_pop"])
+```
+
+write files to disk, good when it takes a long time to process
+
+```{r}
+write_sf(pop_region_3338, "shapefile_demo_data/ak_region_population.shp",
+         delete_layer = T)
+```
+
+Make some maps!
+
+This makes geospatial analysis reproducible. Don't add axes for geospatial data. Instead you're going ot layer different vars on to your map.
+
+```{r}
+ggplot(pop_region_3338)+
+  geom_sf(mapping=aes(fill=total_pop))+
+  theme_bw()+
+  labs(fill="Total Population")+
+  scale_fill_continuous(low="turquoise1",
+                        high="midnightblue",
+                        labels=comma)
+```
+
+```{r}
+rivers_3338 <- read_sf("shapefile_demo_data/ak_rivers_simp.shp")
+st_crs(rivers_3338)
+```
+
+This is how you add layers. Drawn in the order in which you give them.
+```{r}
+ggplot() +
+  geom_sf(data = pop_region_3338, aes(fill = total_pop)) +
+  geom_sf(data=rivers_3338,aes(size=StrOrder),color="black")+
+  geom_sf(data=pop_3338,aes(), size=.5)+
+  scale_size(range=c(.01,.2),guide=F)+
+  theme_bw() +
+  labs(fill = "Total Population") +
+  scale_fill_continuous(low = "khaki", high =  "firebrick", labels = comma)
+```
+
+3857 is the projection system used by google maps, so if you want to use those, you have to transform your datasets
+
+```{r}
+pop_3857<-pop_3338 %>% 
+  st_transform(crs=3857)
+```
+
+CRS from the tile server doesn't match the bounding box. This function fixes it.
+```{r}
+# Define a function to fix the bbox to be in EPSG:3857
+# See https://github.com/dkahle/ggmap/issues/160#issuecomment-397055208
+ggmap_bbox_to_3857 <- function(map) {
+  if (!inherits(map, "ggmap")) stop("map must be a ggmap object")
+  # Extract the bounding box (in lat/lon) from the ggmap to a numeric vector, 
+  # and set the names to what sf::st_bbox expects:
+  map_bbox <- setNames(unlist(attr(map, "bb")), 
+                       c("ymin", "xmin", "ymax", "xmax"))
+  
+  # Coonvert the bbox to an sf polygon, transform it to 3857, 
+  # and convert back to a bbox (convoluted, but it works)
+  bbox_3857 <- st_bbox(st_transform(st_as_sfc(st_bbox(map_bbox, crs = 4326)), 3857))
+  
+  # Overwrite the bbox of the ggmap object with the transformed coordinates 
+  attr(map, "bb")$ll.lat <- bbox_3857["ymin"]
+  attr(map, "bb")$ll.lon <- bbox_3857["xmin"]
+  attr(map, "bb")$ur.lat <- bbox_3857["ymax"]
+  attr(map, "bb")$ur.lon <- bbox_3857["xmax"]
+  map
+}
+```
+
+```{r}
+bbox <- c(-170, 52, -130, 64)   # This is roughly southern Alaska
+ak_map <- get_stamenmap(bbox, zoom = 4)
+ak_map_3857 <- ggmap_bbox_to_3857(ak_map)
+```
+
+```{r}
+ggmap(ak_map_3857) + 
+  geom_sf(data = pop_3857, aes(color = population), inherit.aes = F) +
+  scale_color_continuous(low = "khaki", high =  "firebrick", labels = comma)
+```
+
